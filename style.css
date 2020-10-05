@@ -46,33 +46,35 @@ body {
   overflow: auto;
   font-family: "Courier Prime", monospace;
   background: rgba(44, 0, 30, 9);
-  white-space: pre-wrap;
-  color: #fff;
-  padding: 10px 10px 20px 10px;
+  color: greenyellow;
+  white-space: pre-line;
+  padding: 0px 10px 20px 10px;
   overflow-y: scroll;
   overflow-x: hidden;
-}
-
-.console:focus,
-.console:hover {
-  /*background: gray;*/
+  align-content: center;
+  
 }
 
 .text-console {
-  resize: none;
   font-family: "Courier Prime", monospace;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(44, 0, 30, 9);
   border-radius: 5px;
-  color: #fff;
+  color: greenyellow;
   width: 100%;
   border: none;
   box-shadow: none;
+  outline: none !important;
+  outline-width: 0 !important;
+  -moz-box-shadow: none;
+  -webkit-box-shadow: none;
+  
 }
 
 .text-console:focus,
-.text-console:hover {
-  /*background: #000;
-  color: #fff;*/
+.text-console:hover,
+.text-console:active {
+  background: rgba(44, 0, 30, 9);
+  color: greenyellow;
   border: none;
   box-shadow: none;
 }

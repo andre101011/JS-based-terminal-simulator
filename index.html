@@ -10,16 +10,13 @@
     <div class="container">
       <div class="top-bar">JS-based-terminal-simulator</div>
       <div class="console" id="console">
-        <p id="response-field"></p>
-        <textarea id="command" class="text-console"></textarea>
+       <p class="response-field" id="response-field"></p>
+        <input type="text" id="command" onkeypress="executeCommand(event)" autofocus=true  class="text-console"/>
       </div>
     </div>
 
-    <script
-      src="https://code.jquery.com/jquery-3.5.1.js"
-      integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
-      crossorigin="anonymous"
-    ></script>
+    
+ 
     <script src="./script.js"></script>
   </body>
 </html>
