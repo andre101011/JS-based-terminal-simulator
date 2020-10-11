@@ -45,8 +45,9 @@ body {
   height: 100%;
   overflow: auto;
   font-family: "Courier Prime", monospace;
+  font-size: 1em;
   background: rgba(44, 0, 30, 9);
-  color: greenyellow;
+  color: #FFF;
   white-space: pre-line;
   padding: 0px 10px 20px 10px;
   overflow-y: scroll;
@@ -55,11 +56,16 @@ body {
   
 }
 
+#prompt-command{
+  display: flex;
+}
+
 .text-console {
   font-family: "Courier Prime", monospace;
+  font-size: 1em;
   background: rgba(44, 0, 30, 9);
   border-radius: 5px;
-  color: greenyellow;
+  color: #FFF;
   width: 100%;
   border: none;
   box-shadow: none;
@@ -67,18 +73,24 @@ body {
   outline-width: 0 !important;
   -moz-box-shadow: none;
   -webkit-box-shadow: none;
-  
 }
 
 .text-console:focus,
 .text-console:hover,
 .text-console:active {
   background: rgba(44, 0, 30, 9);
-  color: greenyellow;
   border: none;
   box-shadow: none;
 }
 
 .highlighted {
   color: #e95420;
+}
+
+.white {
+  color: #fff;
+}
+
+.green{
+  color:#0DF205;
 }

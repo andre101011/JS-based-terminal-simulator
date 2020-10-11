@@ -10,13 +10,20 @@
     <div class="container">
       <div class="top-bar">JS-based-terminal-simulator</div>
       <div class="console" id="console">
-       <p class="response-field" id="response-field"></p>
-        <input type="text" id="command" onkeypress="executeCommand(event)" autofocus=true  class="text-console"/>
+        <p class="response-field" id="response-field"></p>
+        <div id="prompt-command">
+          <p id="prompt">prompt</p>
+          <input
+            type="text"
+            id="command"
+            onkeypress="executeCommand(event)"
+            autofocus="true"
+            class="text-console"
+          />
+        </div>
       </div>
     </div>
 
-    
- 
     <script src="./script.js"></script>
   </body>
 </html>
