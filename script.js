@@ -72,7 +72,12 @@ function searchCommand(command) {
       response = nano(command);
       break;
     default:
-      response = '<span class="highlighted">Error:</span> orden no encontrada';
+      if (/^(\.\/)/.test(command[0])) {
+        response = execute(command);
+      } else {
+        response =
+          '<span class="highlighted">Error:</span> orden no encontrada';
+      }
       break;
   }
 
@@ -188,6 +193,39 @@ function cat(command) {
   }
 }
 
+function nano(command) {
+  var disk = getCurrentMachineDisk();
+  var archive = disk.filter((disk) => disk.archive == command[1])[0];
+  var user = getCurrentUser();
+
+  if (archive != null) {
+    if (canWrite(user, archive)) {
+      return "Escribiendo en el archivo ....";
+    } else {
+      return "No tiene permisos para escribir en el archivo";
+    }
+  } else {
+    return '<span class="highlighted">Error:</span> archivo no encontrado';
+  }
+}
+
+function execute(command) {
+  fileName = command[0].replace(/^(\.\/)/, "");
+  var disk = getCurrentMachineDisk();
+  var archive = disk.filter((disk) => disk.archive == fileName)[0];
+  var user = getCurrentUser();
+
+  if (archive != null) {
+    if (canExecute(user, archive)) {
+      return "Ejecutando el archivo ....";
+    } else {
+      return "No tiene permisos para ejecutar el archivo";
+    }
+  } else {
+    return '<span class="highlighted">Error:</span> archivo no encontrado';
+  }
+}
+
 function canRead(user, archive) {
   if (archive.owner === user.uid) {
     //es el dueño
@@ -223,19 +261,22 @@ function canWrite(user, archive) {
   }
 }
 
-function nano(command) {
-  var disk = getCurrentMachineDisk();
-  var archive = disk.filter((disk) => disk.archive == command[1])[0];
-  var user = getCurrentUser();
-
-  if (archive != null) {
-    if (canWrite(user, archive)) {
-      return "Escribiendo en el archivo ....";
-    } else {
-      return "No tiene permisos para escribir en el archivo";
-    }
+function canExecute(user, archive) {
+  if (archive.owner === user.uid) {
+    //es el dueño
+    let x = Number(archive.permissions.charAt(0));
+    return x % 2;
   } else {
-    return '<span class="highlighted">Error:</span> archivo no encontrado';
+    //no es el dueño
+    if (user.groups.includes(archive.gowner)) {
+      //Está en el grupo
+      let x = Number(archive.permissions.charAt(1));
+      return x % 2;
+    } else {
+      //No está en el grupo
+      let x = Number(archive.permissions.charAt(2));
+      return x % 2;
+    }
   }
 }
 
