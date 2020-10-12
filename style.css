@@ -47,26 +47,30 @@ body {
   font-family: "Courier Prime", monospace;
   font-size: 1em;
   background: rgba(44, 0, 30, 9);
-  color: #FFF;
+  color: #fff;
   white-space: pre-line;
   padding: 0px 10px 20px 10px;
   overflow-y: scroll;
   overflow-x: hidden;
   align-content: center;
-  
 }
 
-#prompt-command{
+#prompt-command {
   display: flex;
+  flex-direction: row;
+  align-items: baseline;
 }
 
 .text-console {
+  width: 100%;
+  resize: none;
+
   font-family: "Courier Prime", monospace;
   font-size: 1em;
   background: rgba(44, 0, 30, 9);
   border-radius: 5px;
-  color: #FFF;
-  width: 100%;
+  color: #fff;
+
   border: none;
   box-shadow: none;
   outline: none !important;
@@ -91,6 +95,6 @@ body {
   color: #fff;
 }
 
-.green{
-  color:#0DF205;
+.green {
+  color: #0df205;
 }

@@ -52,7 +52,6 @@ function getActualMachineName() {
 function searchCommand(command) {
   command = command.split(" ");
   response = "";
-  console.log(command);
 
   switch (command[0]) {
     case "comando2":
@@ -62,6 +61,9 @@ function searchCommand(command) {
       response = "respuesta comando3";
       break;
     case "":
+      break;
+    case "ls":
+      response = ls(command);
       break;
     default:
       response = '<span class="highlighted">Error:</span> orden no encontrada';
@@ -87,7 +89,6 @@ function executeCommand(event) {
         acumPrompt = " ";
       } else {
         var answer = searchCommand(command);
-        console.log(answer);
         acumPrompt +=
           '<span class="green">' +
           prompt +
@@ -132,6 +133,39 @@ function login(prompt, command) {
     message: '<span class="highlighted">Error:</span> Fallo en el registro',
     prompt: login_label,
   };
+}
+
+function ls(command) {
+  var result = machines.filter(
+    (machine) => machine.name == getActualMachineName()
+  )[0]["disk"];
+
+  var key = command[1];
+  var string = "";
+  if (command.length > 1) {
+    if (key === "-l") {
+      for (let index = 0; index < result.length; index++) {
+        string +=
+          result[index].permissions +
+          "\t" +
+          result[index].owner +
+          "\t" +
+          result[index].gowner +
+          "\t" +
+          result[index].create_date +
+          "\t" +
+          result[index].archive +
+          "\n";
+      }
+    } else {
+      return "argumento no valido";
+    }
+  } else {
+    for (let index = 0; index < result.length; index++) {
+      string += result[index].archive + " ";
+    }
+  }
+  return string;
 }
 
 document.getElementById("prompt").innerHTML =
@@ -245,7 +279,7 @@ const machines = [
     ip: "191.65.3.3",
     disk: [
       {
-        archive: "lamento_boliviano.mp3",
+        archive: "suVeneno_mp3Free.mp3",
         create_date: "2020-10-10 18:20",
         permissions: "320",
         owner: "1000",
@@ -541,3 +575,4 @@ const machines = [
     ],
   },
 ];
+
