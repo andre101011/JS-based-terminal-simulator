@@ -65,6 +65,9 @@ function searchCommand(command) {
     case "ls":
       response = ls(command);
       break;
+    case "cat":
+      response = cat(command);
+      break;
     default:
       response = '<span class="highlighted">Error:</span> orden no encontrada';
       break;
@@ -136,36 +139,53 @@ function login(prompt, command) {
 }
 
 function ls(command) {
-  var result = machines.filter(
-    (machine) => machine.name == getActualMachineName()
-  )[0]["disk"];
+  var disk = getCurrentMachineDisk();
 
   var key = command[1];
   var string = "";
   if (command.length > 1) {
     if (key === "-l") {
-      for (let index = 0; index < result.length; index++) {
+      for (let index = 0; index < disk.length; index++) {
         string +=
-          result[index].permissions +
+          disk[index].permissions +
           "\t" +
-          result[index].owner +
+          disk[index].owner +
           "\t" +
-          result[index].gowner +
+          disk[index].gowner +
           "\t" +
-          result[index].create_date +
+          disk[index].create_date +
           "\t" +
-          result[index].archive +
+          disk[index].archive +
           "\n";
       }
     } else {
       return "argumento no valido";
     }
   } else {
-    for (let index = 0; index < result.length; index++) {
-      string += result[index].archive + " ";
+    for (let index = 0; index < disk.length; index++) {
+      string += disk[index].archive + " ";
     }
   }
   return string;
+}
+
+function cat(command) {
+  var disk = getCurrentMachineDisk();
+  var archive = disk.filter((disk) => disk.archive == command[1])[0];
+
+  console.log(archive);
+  if (archive != null) {
+    return "Leyendo el contenido del archivo ....";
+  } else {
+    return '<span class="highlighted">Error:</span> archivo no encontrado';
+  }
+}
+
+function getCurrentMachineDisk() {
+  var disk = machines.filter(
+    (machine) => machine.name == getActualMachineName()
+  )[0]["disk"];
+  return disk;
 }
 
 document.getElementById("prompt").innerHTML =
@@ -575,4 +595,3 @@ const machines = [
     ],
   },
 ];
-
