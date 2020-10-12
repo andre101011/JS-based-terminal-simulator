@@ -68,6 +68,9 @@ function searchCommand(command) {
     case "cat":
       response = cat(command);
       break;
+    case "nano":
+      response = nano(command);
+      break;
     default:
       response = '<span class="highlighted">Error:</span> orden no encontrada';
       break;
@@ -172,10 +175,65 @@ function ls(command) {
 function cat(command) {
   var disk = getCurrentMachineDisk();
   var archive = disk.filter((disk) => disk.archive == command[1])[0];
+  var user = getCurrentUser();
 
-  console.log(archive);
   if (archive != null) {
-    return "Leyendo el contenido del archivo ....";
+    if (canRead(user, archive)) {
+      return "Leyendo el contenido del archivo ....";
+    } else {
+      return "No tiene permisos para leer el archivo";
+    }
+  } else {
+    return '<span class="highlighted">Error:</span> archivo no encontrado';
+  }
+}
+
+function canRead(user, archive) {
+  if (archive.owner === user.uid) {
+    //es el dueño
+    return Number(archive.permissions.charAt(0)) >= 4;
+  } else {
+    //no es el dueño
+    if (user.groups.includes(archive.gowner)) {
+      //Está en el grupo
+      return Number(archive.permissions.charAt(1)) >= 4;
+    } else {
+      //No está en el grupo
+      return Number(archive.permissions.charAt(2)) >= 4;
+    }
+  }
+}
+
+function canWrite(user, archive) {
+  if (archive.owner === user.uid) {
+    //es el dueño
+    let x = Number(archive.permissions.charAt(0));
+    return x == 2 || x == 3 || x == 6 || x == 7;
+  } else {
+    //no es el dueño
+    if (user.groups.includes(archive.gowner)) {
+      //Está en el grupo
+      let x = Number(archive.permissions.charAt(1));
+      return x == 2 || x == 3 || x == 6 || x == 7;
+    } else {
+      //No está en el grupo
+      let x = Number(archive.permissions.charAt(2));
+      return x == 2 || x == 3 || x == 6 || x == 7;
+    }
+  }
+}
+
+function nano(command) {
+  var disk = getCurrentMachineDisk();
+  var archive = disk.filter((disk) => disk.archive == command[1])[0];
+  var user = getCurrentUser();
+
+  if (archive != null) {
+    if (canWrite(user, archive)) {
+      return "Escribiendo en el archivo ....";
+    } else {
+      return "No tiene permisos para escribir en el archivo";
+    }
   } else {
     return '<span class="highlighted">Error:</span> archivo no encontrado';
   }
@@ -186,6 +244,14 @@ function getCurrentMachineDisk() {
     (machine) => machine.name == getActualMachineName()
   )[0]["disk"];
   return disk;
+}
+
+function getCurrentUser() {
+  var users = machines.filter(
+    (machine) => machine.name == getActualMachineName()
+  )[0]["users"];
+  var user = users.filter((user) => user.name == getActualUserName())[0];
+  return user;
 }
 
 document.getElementById("prompt").innerHTML =
@@ -201,7 +267,7 @@ const machines = [
       {
         archive: "lamento_boliviano.mp3",
         create_date: "2020-10-10 18:20",
-        permissions: "320",
+        permissions: "340",
         owner: "1000",
         gowner: "1000",
       },
