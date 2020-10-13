@@ -71,6 +71,12 @@ function searchCommand(command) {
     case "nano":
       response = nano(command);
       break;
+    case "rm":
+      response = rm(command);
+      break;
+    case "ssh":
+      response = ssh(command);
+      break;
     default:
       if (/^(\.\/)/.test(command[0])) {
         response = execute(command);
@@ -207,6 +213,58 @@ function nano(command) {
   } else {
     return '<span class="highlighted">Error:</span> archivo no encontrado';
   }
+}
+function rm(command) {
+  var disk = getCurrentMachineDisk();
+  var archive = disk.filter((disk) => disk.archive == command[1])[0];
+
+  if (archive != null) {
+    //cambiar cuando este listo el comando de los permisos
+    if (true) {
+      for (var i = 0; i < disk.length; i++) {
+        console.log(archive);
+        if (disk[i].archive === archive.archive) {
+          disk.splice(i, 1);
+        }
+      }
+      return "El archivo se ha eliminado";
+    } else {
+      return "No tiene permisos para eliminar el archivo";
+    }
+  } else {
+    return '<span class="highlighted">Error:</span> archivo no encontrado';
+  }
+}
+
+function ssh(command) {
+  var remoteAddress = command[1].split("@");
+  var remoteMachineIndex = machines.findIndex(
+    (machines) => machines.ip == remoteAddress[1]
+  );
+  var remoteMachine = machines.filter(
+    (machines) => machines.ip == remoteAddress[1]
+  )[0];
+  var ok=false;
+  if (remoteMachine != null) {
+    var remoteUsers = remoteMachine.users;
+    for (var i = 0; i < remoteUsers.length &&!ok; i++) {
+      if (remoteUsers[i].name == remoteAddress[0]) {
+        
+        sessions[sessions.length] = { machine: remoteMachineIndex, user: i }
+        
+        prompt=getPrepend();
+        ok=true;
+       
+      }
+    }
+  }
+
+  if (!ok) {
+    return '<span class="highlighted">Error:</span> no se puede realizar la conexión';
+
+  }else{
+    return ' '
+  } 
 }
 
 function execute(command) {
@@ -606,7 +664,7 @@ const machines = [
     ip: "191.65.3.5",
     disk: [
       {
-        archive: "lamento_boliviano.mp3",
+        archive: "lamento_boliviano2.mp3",
         create_date: "2020-10-10 18:20",
         permissions: "320",
         owner: "1000",
@@ -620,7 +678,7 @@ const machines = [
         gowner: "1001",
       },
       {
-        archive: "maquina_compartida.pdf",
+        archive: "maquina_compartida2.pdf",
         create_date: "2020-09-02 10:32",
         permissions: "320",
         owner: "1002",
