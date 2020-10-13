@@ -56,7 +56,6 @@ function getActualMachineName() {
 function searchCommand(command) {
   command = command.split(" ");
   response = "";
-  console.log(command)
   switch (command[0]) {
     case "sudo":
       
@@ -67,6 +66,9 @@ function searchCommand(command) {
       break;
     case "touch":
       response = touch(command);
+      break;
+    case "chmod":
+      response = chmod(command)
       break;
     case "":
       break;
@@ -206,7 +208,12 @@ function touch(command){
     })
     return 'Archivo creado'
   }else{
-    return 'Archivo actualizado'
+    if (canWrite(user, archive) == true){
+      return 'Archivo actualizado'
+    }else{
+      return  'touch: no se puede efectuar \`touch\' sobre \''+ name +'\': Permiso denegado'
+    }
+    
   }
 
 }
@@ -257,6 +264,39 @@ function chown(command){
   return 'Permisos actualizados'
 
 
+}
+
+function chmod(command){
+
+  if (command.length < 3){
+    return  '<span class="highlighted">Error:</span> chmod yyy archivo'
+  }
+  var mod = command[1]
+  if(isModValid(mod) == false){
+    return '<span class="highlighted">Error:</span> Permisos invalidos'
+  }
+
+  var archive = getCurrentMachineDisk().find((obj) => obj.archive == command[2])
+  if (archive == undefined){
+    return  '<span class="highlighted">Error:</span> Archivo no encontrado'
+  }
+
+  var user = getCurrentUser()
+  if (canWrite(user, archive) == true){
+    archive.permissions = mod
+  }else{
+    return  'chmod: no se puede efectuar \`chmod\' sobre \''+ archive.archive +'\': Permiso denegado'
+  }
+  return ''
+}
+
+function isModValid(permissions){
+  var permissions_array = permissions.split('')
+  var index = permissions_array.findIndex((obj)=> (obj < '0' && obj > '7'))
+  if(permissions.length != 3 || index == -1){
+    return false
+  }
+  return true
 }
 
 function ls(command) {
