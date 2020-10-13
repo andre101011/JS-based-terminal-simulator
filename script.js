@@ -27,10 +27,14 @@ var sessions = [
 
 //obtiene la cadena inicial del comando de acuerdo al usuario y la maquina
 function getPrepend() {
-  var user = getActualUserName();
-  var machine = getActualMachineName();
+  if (sessions.length == 1 && sessions[0].user == -1 ){
+    return login_label
+  }else{
+    var user = getActualUserName();
+    var machine = getActualMachineName();
+    return user + "@" + machine + ":~$ ";
+  }
 
-  return user + "@" + machine + ":~$ ";
 }
 
 //obtiene el nombre del usuario actual
@@ -52,13 +56,17 @@ function getActualMachineName() {
 function searchCommand(command) {
   command = command.split(" ");
   response = "";
-
+  console.log(command)
   switch (command[0]) {
-    case "comando2":
-      response = "respuesta comando2";
+    case "sudo":
+      
+      response = sudo(command)
       break;
-    case "comando3":
-      response = "respuesta comando3";
+    case "logout":
+      response = logout();
+      break;
+    case "touch":
+      response = touch(command);
       break;
     case "":
       break;
@@ -90,6 +98,22 @@ function searchCommand(command) {
   return response;
 }
 
+function sudo(command){
+
+  response = "";
+
+  switch (command[1]) {
+    case "chown":
+      response = chown(command)
+      break
+    default:
+      return '<span class="highlighted">Error:</span> orden no encontrada';
+  }
+
+  return response;
+
+}
+
 //metodo inicial el ejecutar un comando en la consola
 function executeCommand(event) {
   var command = document.getElementById("command").value;
@@ -97,25 +121,19 @@ function executeCommand(event) {
   if (event.keyCode == 13) {
     //si no hay un usuario logeado ejecuta el login
     if (sessions[0].user === -1) {
-      response = login(prompt, command);
-      document.getElementById("response-field").innerHTML = response.message;
+      answer = login(prompt, command);
+      buildAcumPrompt(prompt, command, answer)
+      document.getElementById("response-field").innerHTML = acumPrompt;
       document.getElementById("prompt").innerHTML =
-        '<span class="green">' + response.prompt + "</span>";
+        '<span class="green">' + getPrepend() + "</span>";
     } else {
       if (command == "clear") {
         acumPrompt = " ";
       } else {
         var answer = searchCommand(command);
-        acumPrompt +=
-          '<span class="green">' +
-          prompt +
-          "</span>" +
-          command +
-          "\n" +
-          answer +
-          "\n";
+        buildAcumPrompt(prompt, command, answer)
       }
-
+      
       document.getElementById("response-field").innerHTML = acumPrompt;
       document.getElementById("prompt").innerHTML =
         '<span class="green">' + getPrepend() + "</span>";
@@ -124,15 +142,26 @@ function executeCommand(event) {
   }
 }
 
+function buildAcumPrompt(prompt, command, answer){
+
+  
+    acumPrompt +=
+    '<span class="green">' +
+    prompt +
+    "</span>" +
+    command +
+    "\n" +
+    answer +
+    "\n";
+
+
+}
+
 function login(prompt, command) {
   //función de login en la maquina inicial ya que es la unica que se logea por este medio, las demas son por medio de ssh
   if (prompt == "Login:") {
     if (command == "") {
-      return {
-        message:
-          '<span class="highlighted">Error:</span> La sintaxis es "Login: usuario"',
-        prompt: login_label,
-      };
+      return '<span class="highlighted">Error:</span> La sintaxis es "Login: usuario"';
     }
 
     users = machines[sessions[0].machine].users;
@@ -140,16 +169,94 @@ function login(prompt, command) {
     logged_user = users.findIndex((user) => user.name == command);
     if (logged_user != -1) {
       sessions[0].user = logged_user;
-      return {
-        message: "Registro exitoso",
-        prompt: getPrepend(),
-      };
+      return "Registro exitoso";
     }
   }
-  return {
-    message: '<span class="highlighted">Error:</span> Fallo en el registro',
-    prompt: login_label,
-  };
+  return '<span class="highlighted">Error:</span> Fallo en el registro';
+}
+
+function logout() {
+  
+  if (sessions.length == 1) {
+    sessions[0].user = -1;
+  }else{
+    sessions.pop();
+  }
+  return ""
+  
+}
+
+function touch(command){
+
+  if (command.length < 2){
+    return  '<span class="highlighted">Error:</span> touch nombre_archivo'
+  }
+
+  var name = command[1]
+  var disk = getCurrentMachineDisk()
+  var archive = disk.find((obj) => obj.archive == name)
+  var user = getCurrentUser()
+  if (archive == undefined){
+    disk.push({
+      archive: name,
+      create_date: getActualDate(),
+      permissions: "320",
+      owner: user.uid,
+      gowner: user.gid,
+    })
+    return 'Archivo creado'
+  }else{
+    return 'Archivo actualizado'
+  }
+
+}
+
+function getActualDate(){
+
+  var today = new Date();
+  console.log(today)
+  var dd = String(today.getDate()).padStart(2, '0');
+  var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+  var yyyy = today.getFullYear();
+  var MM = String(today.getMinutes()).padStart(2, '0');
+  var HH = String(today.getHours()).padStart(2, '0');
+
+  today = yyyy + '-' + mm + '-' + dd+' '+HH+":"+MM ;
+  console.log(today)
+  return today
+
+}
+
+function chown(command){
+  if (command.length < 4){
+    return  '<span class="highlighted">Error:</span> sudo chown nombre:grupo archivo'
+  }
+  name_group = command[2].split(":")
+  if (name_group < 2){
+    return  '<span class="highlighted">Error:</span> sudo chown nombre:grupo archivo'
+  }
+
+  var user = getCurrentMachine().users.find((obj) => obj.name == name_group[0])
+  var group = getCurrentMachine().groups.find((obj) => obj.name == name_group[1])
+  if (user == undefined){
+    return  '<span class="highlighted">Error:</span> Usuario no encontrado'
+  }
+
+  if (group == undefined){
+    return  '<span class="highlighted">Error:</span> Grupo no encontrado'
+  }
+
+  var archive = getCurrentMachineDisk().find((obj) => obj.archive == command[3])
+  if (archive == undefined){
+    return  '<span class="highlighted">Error:</span> Archivo no encontrado'
+  }
+
+  archive.owner = user.uid
+  archive.gowner = group.id
+
+  return 'Permisos actualizados'
+
+
 }
 
 function ls(command) {
@@ -338,19 +445,33 @@ function canExecute(user, archive) {
   }
 }
 
+function getCurrentMachine() {
+
+  var lastSession = sessions[sessions.length - 1];
+  if (lastSession.user != -1)
+    return machines[lastSession.machine];
+  else return undefined;
+}
+
 function getCurrentMachineDisk() {
-  var disk = machines.filter(
-    (machine) => machine.name == getActualMachineName()
-  )[0]["disk"];
-  return disk;
+  // var disk = machines.filter(
+  //   (machine) => machine.name == getActualMachineName()
+  // )[0]["disk"];
+  var lastSession = sessions[sessions.length - 1];
+  if (lastSession.user != -1)
+    return machines[lastSession.machine].disk;
+  else return undefined;
 }
 
 function getCurrentUser() {
-  var users = machines.filter(
-    (machine) => machine.name == getActualMachineName()
-  )[0]["users"];
-  var user = users.filter((user) => user.name == getActualUserName())[0];
-  return user;
+  // var users = machines.filter(
+  //   (machine) => machine.name == getActualMachineName()
+  // )[0]["users"];
+  // var user = users.filter((user) => user.name == getActualUserName())[0];
+  var lastSession = sessions[sessions.length - 1];
+  if (lastSession.user != -1)
+    return machines[lastSession.machine].users[lastSession.user];
+  else return undefined;
 }
 
 document.getElementById("prompt").innerHTML =
