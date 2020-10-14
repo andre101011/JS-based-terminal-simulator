@@ -2,6 +2,8 @@ const login_label = "Login: ";
 const commandError =
   '<span class="highlighted">Error:</span> orden no encontrada';
 var acumPrompt = "";
+var lastCommand = [];
+var lastCommandIndex = 0;
 //lista con el orden de las sesiones activas, la ultima maquina de la lista es la que se está usando
 /*ej: la maquina 0(ubuntu) hace ssh a la maquina 1(mint) entonces: 
 sessions = [
@@ -27,14 +29,13 @@ var sessions = [
 
 //obtiene la cadena inicial del comando de acuerdo al usuario y la maquina
 function getPrepend() {
-  if (sessions.length == 1 && sessions[0].user == -1 ){
-    return login_label
-  }else{
+  if (sessions.length == 1 && sessions[0].user == -1) {
+    return login_label;
+  } else {
     var user = getActualUserName();
     var machine = getActualMachineName();
     return user + "@" + machine + ":~$ ";
   }
-
 }
 
 //obtiene el nombre del usuario actual
@@ -58,8 +59,7 @@ function searchCommand(command) {
   response = "";
   switch (command[0]) {
     case "sudo":
-      
-      response = sudo(command)
+      response = sudo(command);
       break;
     case "logout":
       response = logout();
@@ -68,9 +68,10 @@ function searchCommand(command) {
       response = touch(command);
       break;
     case "chmod":
-      response = chmod(command)
+      response = chmod(command);
       break;
-    case "":
+    case "scp":
+      response = scp(command);
       break;
     case "ls":
       response = ls(command);
@@ -100,31 +101,32 @@ function searchCommand(command) {
   return response;
 }
 
-function sudo(command){
-
+function sudo(command) {
   response = "";
 
   switch (command[1]) {
     case "chown":
-      response = chown(command)
-      break
+      response = chown(command);
+      break;
     default:
       return '<span class="highlighted">Error:</span> orden no encontrada';
   }
 
   return response;
-
 }
 
 //metodo inicial el ejecutar un comando en la consola
 function executeCommand(event) {
   var command = document.getElementById("command").value;
+
   var prompt = document.getElementById("prompt").innerText;
   if (event.keyCode == 13) {
+    lastCommand.push(command);
+    lastCommandIndex = lastCommand.length - 1;
     //si no hay un usuario logeado ejecuta el login
     if (sessions[0].user === -1) {
       answer = login(prompt, command);
-      buildAcumPrompt(prompt, command, answer)
+      buildAcumPrompt(prompt, command, answer);
       document.getElementById("response-field").innerHTML = acumPrompt;
       document.getElementById("prompt").innerHTML =
         '<span class="green">' + getPrepend() + "</span>";
@@ -133,21 +135,34 @@ function executeCommand(event) {
         acumPrompt = " ";
       } else {
         var answer = searchCommand(command);
-        buildAcumPrompt(prompt, command, answer)
+        buildAcumPrompt(prompt, command, answer);
       }
-      
+
       document.getElementById("response-field").innerHTML = acumPrompt;
       document.getElementById("prompt").innerHTML =
         '<span class="green">' + getPrepend() + "</span>";
     }
     document.getElementById("command").value = "";
+  } else if (event.keyCode == 38) {
+    if (lastCommand.length != 0) {
+      document.getElementById("command").value = lastCommand[lastCommandIndex];
+
+      if (lastCommandIndex > 0) {
+        lastCommandIndex--;
+      }
+    }
+  } else if (event.keyCode == 40) {
+    if (lastCommand.length != 0) {
+      document.getElementById("command").value = lastCommand[lastCommandIndex];
+      if (lastCommandIndex < lastCommand.length - 1) {
+        lastCommandIndex++;
+      }
+    }
   }
 }
 
-function buildAcumPrompt(prompt, command, answer){
-
-  
-    acumPrompt +=
+function buildAcumPrompt(prompt, command, answer) {
+  acumPrompt +=
     '<span class="green">' +
     prompt +
     "</span>" +
@@ -155,8 +170,6 @@ function buildAcumPrompt(prompt, command, answer){
     "\n" +
     answer +
     "\n";
-
-
 }
 
 function login(prompt, command) {
@@ -178,125 +191,138 @@ function login(prompt, command) {
 }
 
 function logout() {
-  
   if (sessions.length == 1) {
     sessions[0].user = -1;
-  }else{
+  } else {
     sessions.pop();
   }
-  return ""
-  
+  return "";
 }
 
-function touch(command){
-
-  if (command.length < 2){
-    return  '<span class="highlighted">Error:</span> touch nombre_archivo'
+function touch(command) {
+  if (command.length < 2) {
+    return '<span class="highlighted">Error:</span> touch nombre_archivo';
   }
 
-  var name = command[1]
-  var disk = getCurrentMachineDisk()
-  var archive = disk.find((obj) => obj.archive == name)
-  var user = getCurrentUser()
-  if (archive == undefined){
+  var name = command[1];
+  var disk = getCurrentMachineDisk();
+  var archive = disk.find((obj) => obj.archive == name);
+  var user = getCurrentUser();
+  if (archive == undefined) {
     disk.push({
       archive: name,
       create_date: getActualDate(),
       permissions: "320",
       owner: user.uid,
       gowner: user.gid,
-    })
-    return 'Archivo creado'
-  }else{
-    if (canWrite(user, archive) == true){
-      return 'Archivo actualizado'
-    }else{
-      return  'touch: no se puede efectuar \`touch\' sobre \''+ name +'\': Permiso denegado'
+    });
+    return "Archivo creado";
+  } else {
+    if (canWrite(user, archive) == true) {
+      return "Archivo actualizado";
+    } else {
+      return (
+        "touch: no se puede efectuar `touch' sobre '" +
+        name +
+        "': Permiso denegado"
+      );
     }
-    
   }
-
 }
 
-function getActualDate(){
-
+function getActualDate() {
   var today = new Date();
-  console.log(today)
-  var dd = String(today.getDate()).padStart(2, '0');
-  var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+  console.log(today);
+  var dd = String(today.getDate()).padStart(2, "0");
+  var mm = String(today.getMonth() + 1).padStart(2, "0"); //January is 0!
   var yyyy = today.getFullYear();
-  var MM = String(today.getMinutes()).padStart(2, '0');
-  var HH = String(today.getHours()).padStart(2, '0');
+  var MM = String(today.getMinutes()).padStart(2, "0");
+  var HH = String(today.getHours()).padStart(2, "0");
 
-  today = yyyy + '-' + mm + '-' + dd+' '+HH+":"+MM ;
-  console.log(today)
-  return today
-
+  today = yyyy + "-" + mm + "-" + dd + " " + HH + ":" + MM;
+  console.log(today);
+  return today;
 }
 
-function chown(command){
-  if (command.length < 4){
-    return  '<span class="highlighted">Error:</span> sudo chown nombre:grupo archivo'
+function chown(command) {
+  if (command.length < 4) {
+    return '<span class="highlighted">Error:</span> sudo chown nombre:grupo archivo';
   }
-  name_group = command[2].split(":")
-  if (name_group < 2){
-    return  '<span class="highlighted">Error:</span> sudo chown nombre:grupo archivo'
-  }
-
-  var user = getCurrentMachine().users.find((obj) => obj.name == name_group[0])
-  var group = getCurrentMachine().groups.find((obj) => obj.name == name_group[1])
-  if (user == undefined){
-    return  '<span class="highlighted">Error:</span> Usuario no encontrado'
+  name_group = command[2].split(":");
+  if (name_group < 2) {
+    return '<span class="highlighted">Error:</span> sudo chown nombre:grupo archivo';
   }
 
-  if (group == undefined){
-    return  '<span class="highlighted">Error:</span> Grupo no encontrado'
+  var user = getCurrentMachine().users.find((obj) => obj.name == name_group[0]);
+  var group = getCurrentMachine().groups.find(
+    (obj) => obj.name == name_group[1]
+  );
+  if (user == undefined) {
+    return '<span class="highlighted">Error:</span> Usuario no encontrado';
   }
 
-  var archive = getCurrentMachineDisk().find((obj) => obj.archive == command[3])
-  if (archive == undefined){
-    return  '<span class="highlighted">Error:</span> Archivo no encontrado'
+  if (group == undefined) {
+    return '<span class="highlighted">Error:</span> Grupo no encontrado';
   }
 
-  archive.owner = user.uid
-  archive.gowner = group.id
+  var archive = getCurrentMachineDisk().find(
+    (obj) => obj.archive == command[3]
+  );
+  if (archive == undefined) {
+    return '<span class="highlighted">Error:</span> Archivo no encontrado';
+  }
 
-  return 'Permisos actualizados'
+  archive.owner = user.uid;
+  archive.gowner = group.id;
 
-
+  return "Permisos actualizados";
 }
 
-function chmod(command){
-
-  if (command.length < 3){
-    return  '<span class="highlighted">Error:</span> chmod yyy archivo'
+function chmod(command) {
+  if (command.length < 3) {
+    return '<span class="highlighted">Error:</span> chmod yyy archivo';
   }
-  var mod = command[1]
-  if(isModValid(mod) == false){
-    return '<span class="highlighted">Error:</span> Permisos invalidos'
-  }
-
-  var archive = getCurrentMachineDisk().find((obj) => obj.archive == command[2])
-  if (archive == undefined){
-    return  '<span class="highlighted">Error:</span> Archivo no encontrado'
+  var mod = command[1];
+  if (isModValid(mod) == false) {
+    return '<span class="highlighted">Error:</span> Permisos invalidos';
   }
 
-  var user = getCurrentUser()
-  if (canWrite(user, archive) == true){
-    archive.permissions = mod
-  }else{
-    return  'chmod: no se puede efectuar \`chmod\' sobre \''+ archive.archive +'\': Permiso denegado'
+  var archive = getCurrentMachineDisk().find(
+    (obj) => obj.archive == command[2]
+  );
+  if (archive == undefined) {
+    return '<span class="highlighted">Error:</span> Archivo no encontrado';
   }
-  return ''
+
+  var user = getCurrentUser();
+  if (canWrite(user, archive) == true) {
+    archive.permissions = mod;
+  } else {
+    return (
+      "chmod: no se puede efectuar `chmod' sobre '" +
+      archive.archive +
+      "': Permiso denegado"
+    );
+  }
+  return "";
 }
 
-function isModValid(permissions){
-  var permissions_array = permissions.split('')
-  var index = permissions_array.findIndex((obj)=> (obj < '0' && obj > '7'))
-  if(permissions.length != 3 || index == -1){
-    return false
+function isModValid(permissions) {
+  
+  var permissions_array = permissions.split("");
+  console.log(permissions_array);
+  var permissions_array2 =[]
+  for (var i=0; i<permissions_array.length;i++){
+    permissions_array2.push(parseInt (permissions_array[i]));
   }
-  return true
+  console.log(permissions_array2);
+  
+  var index = permissions_array2.findIndex((obj) => obj < 0 || obj > 7);
+
+  if (permissions.length != 3 || index != -1) {
+    return false;
+  }
+  return true;
 }
 
 function ls(command) {
@@ -364,10 +390,10 @@ function nano(command) {
 function rm(command) {
   var disk = getCurrentMachineDisk();
   var archive = disk.filter((disk) => disk.archive == command[1])[0];
-
+  var user = getCurrentUser();
   if (archive != null) {
     //cambiar cuando este listo el comando de los permisos
-    if (true) {
+    if (canWrite(user, archive)) {
       for (var i = 0; i < disk.length; i++) {
         console.log(archive);
         if (disk[i].archive === archive.archive) {
@@ -391,27 +417,133 @@ function ssh(command) {
   var remoteMachine = machines.filter(
     (machines) => machines.ip == remoteAddress[1]
   )[0];
-  var ok=false;
+  var ok = false;
   if (remoteMachine != null) {
     var remoteUsers = remoteMachine.users;
-    for (var i = 0; i < remoteUsers.length &&!ok; i++) {
+    for (var i = 0; i < remoteUsers.length && !ok; i++) {
       if (remoteUsers[i].name == remoteAddress[0]) {
-        
-        sessions[sessions.length] = { machine: remoteMachineIndex, user: i }
-        
-        prompt=getPrepend();
-        ok=true;
-       
+        sessions[sessions.length] = { machine: remoteMachineIndex, user: i };
+
+        prompt = getPrepend();
+        ok = true;
       }
     }
   }
 
   if (!ok) {
     return '<span class="highlighted">Error:</span> no se puede realizar la conexión';
+  } else {
+    return " ";
+  }
+}
 
-  }else{
-    return ' '
-  } 
+function scp(command) {
+  var disk = getCurrentMachineDisk();
+  var get = command[1].includes("@") && command[1].includes(":");
+  var user = getCurrentUser();
+  console.log(get);
+  if (!get) {
+    // es para copiar un archivo en el remoto
+
+    var remoteAddress = command[2].split("@");
+    var archive = disk.filter((disk) => disk.archive == command[1])[0];
+
+    var remoteMachine = machines.filter(
+      (machines) => machines.ip == remoteAddress[1].split(":")[0]
+    )[0];
+
+    var ok = false;
+    if (remoteMachine != null) {
+      var remoteUsers = remoteMachine.users;
+      var remoteUser;
+      for (var i = 0; i < remoteUsers.length && !ok; i++) {
+        if (remoteUsers[i].name == remoteAddress[0]) {
+          ok = true;
+          remoteUser = remoteUsers[i];
+        }
+      }
+      console.log(ok);
+      if (ok && archive != null) {
+        archiveCopy = Object.assign({}, archive);
+
+        if (canRead(remoteUser, archive)) {
+          var name = command[2].split(":")[1];
+          if (name != ".") {
+            console.log(name);
+
+            var archiveD = remoteMachine.disk.filter(
+              (disk) => disk.archive == name
+            )[0];
+            if (archiveD != null) {
+              if (!canWrite(remoteUser, archiveD)) {
+                return '<span class="highlighted">Error:</span> no tiene permisos de escritura sobre el archivo destino';
+              } else {
+                archiveCopy.archive = name;
+              }
+            }
+          }
+
+          remoteMachine.disk.push(archiveCopy);
+          return "";
+        } else {
+          return '<span class="highlighted">Error:</span> no tiene permisos de lectura sobre el archivo origen';
+        }
+      } else {
+        return '<span class="highlighted">Error:</span> el archivo origen no existe';
+      }
+    }
+  } else {
+    //al entrar significa que es para traer un archivo del remoto
+
+    var remoteAddress = command[1].split("@");
+
+    var remoteMachine = machines.filter(
+      (machines) => machines.ip == remoteAddress[1].split(":")[0]
+    )[0];
+
+    var ok = false;
+
+    if (remoteMachine != null) {
+      var remoteUsers = remoteMachine.users;
+      var remoteUser;
+      for (var i = 0; i < remoteUsers.length && !ok; i++) {
+        if (remoteUsers[i].name == remoteAddress[0]) {
+          ok = true;
+          remoteUser = remoteUsers[i];
+        }
+      }
+      var archive = remoteMachine.disk.filter(
+        (disk) => disk.archive == remoteAddress[1].split(":")[1]
+      )[0];
+
+      if (ok && archive != null) {
+        archiveCopy = Object.assign({}, archive);
+        console.log(archive);
+
+        if (canRead(user, archive)) {
+          var name = command[2];
+          if (name != ".") {
+            var archiveD = remoteMachine.disk.filter(
+              (disk) => disk.archive == name
+            )[0];
+            if (archiveD != null) {
+              if (!canWrite(remoteUser, archiveD)) {
+                return '<span class="highlighted">Error:</span> no tiene permisos de escritura sobre el archivo destino';
+              }
+            } else {
+              archiveCopy.archive = name;
+            }
+          }
+          disk.push(archiveCopy);
+          return "";
+        } else {
+          return '<span class="highlighted">Error:</span> no tiene permisos de lectura sobre el archivo origen';
+        }
+      } else {
+        return '<span class="highlighted">Error:</span> el archivo origen no existe';
+      }
+    }
+  }
 }
 
 function execute(command) {
@@ -486,10 +618,8 @@ function canExecute(user, archive) {
 }
 
 function getCurrentMachine() {
-
   var lastSession = sessions[sessions.length - 1];
-  if (lastSession.user != -1)
-    return machines[lastSession.machine];
+  if (lastSession.user != -1) return machines[lastSession.machine];
   else return undefined;
 }
 
@@ -498,8 +628,7 @@ function getCurrentMachineDisk() {
   //   (machine) => machine.name == getActualMachineName()
   // )[0]["disk"];
   var lastSession = sessions[sessions.length - 1];
-  if (lastSession.user != -1)
-    return machines[lastSession.machine].disk;
+  if (lastSession.user != -1) return machines[lastSession.machine].disk;
   else return undefined;
 }
 
@@ -832,7 +961,7 @@ const machines = [
         gowner: "1000",
       },
       {
-        archive: "parcial_1.pdf",
+        archive: "parcial_2.pdf",
         create_date: "2020-09-10 22:20",
         permissions: "320",
         owner: "1001",
