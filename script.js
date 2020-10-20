@@ -93,7 +93,7 @@ function searchCommand(command) {
         response = execute(command);
       } else {
         response =
-          '<span class="highlighted">Error:</span> orden no encontrada';
+          command[0]+': no se encontró la orden';
       }
       break;
   }
@@ -109,7 +109,7 @@ function sudo(command) {
       response = chown(command);
       break;
     default:
-      return '<span class="highlighted">Error:</span> orden no encontrada';
+          return command[1] + ': no se encontró la orden';
   }
 
   return response;
@@ -216,10 +216,10 @@ function touch(command) {
       owner: user.uid,
       gowner: user.gid,
     });
-    return "Archivo creado";
+    return "";
   } else {
     if (canWrite(user, archive) == true) {
-      return "Archivo actualizado";
+      return "";
     } else {
       return (
         "touch: no se puede efectuar `touch' sobre '" +
@@ -246,7 +246,7 @@ function getActualDate() {
 
 function chown(command) {
   if (command.length < 4) {
-    return '<span class="highlighted">Error:</span> sudo chown nombre:grupo archivo';
+      return 'chown: missing operand';
   }
   name_group = command[2].split(":");
   if (name_group < 2) {
@@ -257,41 +257,41 @@ function chown(command) {
   var group = getCurrentMachine().groups.find(
     (obj) => obj.name == name_group[1]
   );
-  if (user == undefined) {
-    return '<span class="highlighted">Error:</span> Usuario no encontrado';
+    if (user == undefined) {
+        return 'chown: usuario inválido: \'' + name_group + '\'';
   }
 
   if (group == undefined) {
-    return '<span class="highlighted">Error:</span> Grupo no encontrado';
+      return 'chown: usuario inválido: \'' + name_group + '\'';
   }
 
   var archive = getCurrentMachineDisk().find(
     (obj) => obj.archive == command[3]
   );
-  if (archive == undefined) {
-    return '<span class="highlighted">Error:</span> Archivo no encontrado';
+    if (archive == undefined) {
+        return 'chown: no se puede acceder a \'' + command[3] + '\': No existe el archivo o el directorio';
   }
 
   archive.owner = user.uid;
   archive.gowner = group.id;
 
-  return "Permisos actualizados";
+  return "";
 }
 
 function chmod(command) {
   if (command.length < 3) {
-    return '<span class="highlighted">Error:</span> chmod yyy archivo';
+      return 'chmod: falta un operando';
   }
   var mod = command[1];
   if (isModValid(mod) == false) {
-    return '<span class="highlighted">Error:</span> Permisos invalidos';
+      return 'chmod: modo inválido: «'+mod+'»';
   }
 
   var archive = getCurrentMachineDisk().find(
     (obj) => obj.archive == command[2]
   );
   if (archive == undefined) {
-    return '<span class="highlighted">Error:</span> Archivo no encontrado';
+      return 'chmod: no se puede acceder a \'' + command[2] + '\': No existe el archivo o el directorio';
   }
 
   var user = getCurrentUser();
