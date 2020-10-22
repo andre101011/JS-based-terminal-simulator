@@ -34,7 +34,11 @@ function getPrepend() {
   } else {
     var user = getActualUserName();
     var machine = getActualMachineName();
-    return user + "@" + machine + ":~$ ";
+    if (user != "root") {
+      return user + "@" + machine + ":~$ ";
+    }else{
+      return user + "@" + machine + ":/# ";
+    }
   }
 }
 
@@ -92,8 +96,7 @@ function searchCommand(command) {
       if (/^(\.\/)/.test(command[0])) {
         response = execute(command);
       } else {
-        response =
-          command[0]+': no se encontró la orden';
+        response = command[0] + ": no se encontró la orden";
       }
       break;
   }
@@ -109,7 +112,7 @@ function sudo(command) {
       response = chown(command);
       break;
     default:
-          return command[1] + ': no se encontró la orden';
+      return command[1] + ": no se encontró la orden";
   }
 
   return response;
@@ -246,7 +249,7 @@ function getActualDate() {
 
 function chown(command) {
   if (command.length < 4) {
-      return 'chown: missing operand';
+    return "chown: missing operand";
   }
   name_group = command[2].split(":");
   if (name_group < 2) {
@@ -257,19 +260,23 @@ function chown(command) {
   var group = getCurrentMachine().groups.find(
     (obj) => obj.name == name_group[1]
   );
-    if (user == undefined) {
-        return 'chown: usuario inválido: \'' + name_group + '\'';
+  if (user == undefined) {
+    return "chown: usuario inválido: '" + name_group + "'";
   }
 
   if (group == undefined) {
-      return 'chown: usuario inválido: \'' + name_group + '\'';
+    return "chown: usuario inválido: '" + name_group + "'";
   }
 
   var archive = getCurrentMachineDisk().find(
     (obj) => obj.archive == command[3]
   );
-    if (archive == undefined) {
-        return 'chown: no se puede acceder a \'' + command[3] + '\': No existe el archivo o el directorio';
+  if (archive == undefined) {
+    return (
+      "chown: no se puede acceder a '" +
+      command[3] +
+      "': No existe el archivo o el directorio"
+    );
   }
 
   archive.owner = user.uid;
@@ -280,22 +287,30 @@ function chown(command) {
 
 function chmod(command) {
   if (command.length < 3) {
-      return 'chmod: falta un operando';
+    return "chmod: falta un operando";
   }
   var mod = command[1];
   if (isModValid(mod) == false) {
-      return 'chmod: modo inválido: «'+mod+'»';
+    return "chmod: modo inválido: «" + mod + "»";
   }
 
   var archive = getCurrentMachineDisk().find(
     (obj) => obj.archive == command[2]
   );
   if (archive == undefined) {
-      return 'chmod: no se puede acceder a \'' + command[2] + '\': No existe el archivo o el directorio';
+    return (
+      "chmod: no se puede acceder a '" +
+      command[2] +
+      "': No existe el archivo o el directorio"
+    );
   }
 
   var user = getCurrentUser();
-  if (canWrite(user, archive) == true) {
+  if (
+    canWrite(user, archive) == true ||
+    user.uid == archive.owner ||
+    user.uid == 0
+  ) {
     archive.permissions = mod;
   } else {
     return (
@@ -308,15 +323,14 @@ function chmod(command) {
 }
 
 function isModValid(permissions) {
-  
   var permissions_array = permissions.split("");
   console.log(permissions_array);
-  var permissions_array2 =[]
-  for (var i=0; i<permissions_array.length;i++){
-    permissions_array2.push(parseInt (permissions_array[i]));
+  var permissions_array2 = [];
+  for (var i = 0; i < permissions_array.length; i++) {
+    permissions_array2.push(parseInt(permissions_array[i]));
   }
   console.log(permissions_array2);
-  
+
   var index = permissions_array2.findIndex((obj) => obj < 0 || obj > 7);
 
   if (permissions.length != 3 || index != -1) {
@@ -466,25 +480,30 @@ function scp(command) {
       if (ok && archive != null) {
         archiveCopy = Object.assign({}, archive);
 
-        if (canRead(remoteUser, archive)) {
+        if (canRead(user, archive)) {
+          //si el usuario local puede leer el archivo local
           var name = command[2].split(":")[1];
           if (name != ".") {
             console.log(name);
-
-            var archiveD = remoteMachine.disk.filter(
-              (disk) => disk.archive == name
-            )[0];
-            if (archiveD != null) {
-              if (!canWrite(remoteUser, archiveD)) {
-                return '<span class="highlighted">Error:</span> no tiene permisos de escritura sobre el archivo destino';
-              } else {
-                archiveCopy.archive = name;
-              }
-            }
+            archiveCopy.archive = name;
+          } else {
+            name = archive.archive;
           }
-
-          remoteMachine.disk.push(archiveCopy);
-          return "";
+          var archiveD = remoteMachine.disk.filter(
+            (disk) => disk.archive == name
+          )[0];
+          if (archiveD != null) {
+            if (!canWrite(remoteUser, archiveD)) {
+              // si el usuario remoto puede escribir en el archivo destino
+              return '<span class="highlighted">Error:</span> no tiene permisos de escritura sobre el archivo destino';
+            }
+          } else {
+            console.log("LLega" + archiveD);
+            archiveCopy.owner = remoteUser.uid;
+            archiveCopy.gowner = remoteUser.gid;
+            remoteMachine.disk.push(archiveCopy);
+          }
+          return archive.archive + "                                   100%";
         } else {
           return '<span class="highlighted">Error:</span> no tiene permisos de lectura sobre el archivo origen';
         }
@@ -512,6 +531,7 @@ function scp(command) {
           remoteUser = remoteUsers[i];
         }
       }
+      //este es el archivo remoto
       var archive = remoteMachine.disk.filter(
         (disk) => disk.archive == remoteAddress[1].split(":")[1]
       )[0];
@@ -520,22 +540,28 @@ function scp(command) {
         archiveCopy = Object.assign({}, archive);
         console.log(archive);
 
-        if (canRead(user, archive)) {
+        if (canRead(remoteUser, archive)) {
+          // si el usuario remoto puede leer el arhivo remoto
           var name = command[2];
           if (name != ".") {
-            var archiveD = remoteMachine.disk.filter(
-              (disk) => disk.archive == name
-            )[0];
-            if (archiveD != null) {
-              if (!canWrite(remoteUser, archiveD)) {
-                return '<span class="highlighted">Error:</span> no tiene permisos de escritura sobre el archivo destino';
-              }
-            } else {
-              archiveCopy.archive = name;
-            }
+            archiveCopy.archive = name;
+          } else {
+            name = archive.archive;
           }
-          disk.push(archiveCopy);
-          return "";
+
+          var archiveD = disk.filter((disk) => disk.archive == name)[0];
+          if (archiveD != null) {
+            if (!canWrite(user, archiveD)) {
+              // si el usuario local puede escirbir sobre el archivo local
+              return '<span class="highlighted">Error:</span> no tiene permisos de escritura sobre el archivo destino';
+            }
+          } else {
+            archiveCopy.owner = user.uid;
+            archiveCopy.gowner = user.gid;
+            disk.push(archiveCopy);
+          }
+
+          return archive.archive + "                                   100%";
         } else {
           return '<span class="highlighted">Error:</span> no tiene permisos de lectura sobre el archivo origen';
         }
